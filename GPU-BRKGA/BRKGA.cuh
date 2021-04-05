@@ -62,7 +62,7 @@ public:
 	unsigned getPo() const;
 	double getRhoe() const;
 	unsigned getK() const;
-	float* getPopulations() const;
+	std::vector<std::vector<Individual>> getPopulations() const;
 	float* getFitnessKeys() const;
 	int* getFitnessValues() const;
 	unsigned getOffset(int _k, bool _pop) const;
@@ -171,14 +171,6 @@ BRKGA< Decoder >::~BRKGA() {
 	for(unsigned i = 0; i < K; ++i) {  }
 }
 
-// to be filled
-/*const Population& BRKGA<>::getPopulation(unsigned k) const {
-	#ifdef RANGECHECK
-		if(k >= K) { throw std::range_error("Invalid population identifier."); }
-	#endif
-	return ();
-}*/
-
 template< class Decoder >
 Individual BRKGA< Decoder >::getBestIndividual() {
 	int h_bk;
@@ -216,9 +208,7 @@ void BRKGA< Decoder >::evolve(unsigned generations) {
 	}
 }
 
-//to be filled
-template< class Decoder >
-void BRKGA< Decoder >::exchangeElite(unsigned M) throw(std::range_error) {
+/* INFO ###############
 	/*#ifdef RANGECHECK
 		if(M == 0 || M >= p) { throw std::range_error("M cannot be zero or >= p."); }
 	#endif
@@ -244,6 +234,11 @@ void BRKGA< Decoder >::exchangeElite(unsigned M) throw(std::range_error) {
 	}
 
 	for(int j = 0; j < int(K); ++j) { current[j]->sortFitness(); }*/
+
+//IMPLEMENTAR / TESTAR COM MULTIPLAS POPULAÇÕES
+template< class Decoder >
+void BRKGA< Decoder >::exchangeElite(unsigned M) throw(std::range_error) {
+
 }
 
 
@@ -312,8 +307,40 @@ inline void BRKGA< Decoder >::evolution() {
 	}
 }
 
+// FINALIZANDO... TESTAR COM MULTIPLAS POPULAÇÕES
 template< class Decoder >
-float* BRKGA< Decoder >::getPopulations() const { return h_populations; }
+std::vector<std::vector<Individual>> BRKGA< Decoder >::getPopulations() const { 
+	/*
+	float* aux_pop = h_populations;
+	float* aux_fitk = h_fitnessKeys;
+	int* aux_fitv = h_fitnessKeys;
+	
+	cpyHost();
+	std::vector<std::vector<Individual>> pops; // TESTAR
+	for(int _k = 0; _k < K; _k++)
+	{
+		int offp = getOffset(_k, true);
+		int offn = getOffset(_k, false);
+		aux_pop = &h_populations[offp];
+		aux_fitk = &h_fitnessKeys[offn];
+		aux_fitv = &h_fitnessValues[offn];
+		for(int _p = 0; _p < p; _p++)
+		{
+			//INDEX INDIVIDUALS
+			//CREATE ONE
+			for(int _n = 0; _n < n; _n++)
+			{
+				// CHROMOSOMES
+				// FILL
+			}
+		}
+	}		
+	
+
+
+	return pops;
+	*/
+}
 
 template< class Decoder >
 float* BRKGA< Decoder >::getFitnessKeys() const { return h_fitnessKeys; }
