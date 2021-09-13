@@ -20,14 +20,14 @@ Maceió, Alagoas, Brasil.
 int main(int argc, char* argv[]) {
 
 	int GEN = std::atoi(argv[2]);// generations from argv
-	printf("\n");
+	//printf("\n");
 	
-	const unsigned n = 128;		// size of chromosomes
-	const unsigned p = 1024;	// size of population
+	const unsigned n = 32;		// size of chromosomes
+	const unsigned p = 256;	// size of population
 	const double pe = 0.15625;	// fraction of population to be the elite-set
 	const double pm = 0.15625;	// fraction of population to be replaced by mutants
 	const double rhoe = 0.70;	// probability that offspring inherit an allele from elite parent
-	const unsigned K = 3;		// number of independent populations
+	const unsigned K = 1;		// number of independent populations
 	unsigned ipt = 1;	        // number items per threads for parallel evolution
 	
 	SampleDecoder RefDecoder; 	// reference to decoder
@@ -52,17 +52,18 @@ int main(int argc, char* argv[]) {
 	const unsigned X_NUMBER = 2;	// exchange top 2 best
 	const unsigned MAX_GENS = GEN;	// run for 1000 gens
 	
-	std::cout << "Running for " << MAX_GENS << " generations..." << std::endl;
+	//std::cout << "Running for " << MAX_GENS << " generations..." << std::endl;
 	do {
 		algorithm.evolve(); // evolve the population for one generation
 		generation++;
+		//printf("GENERATION %d------------------------------\n", generation);
 	} while (generation < MAX_GENS);  	
 
 	Individual ind = algorithm.getBestIndividual();
-	printf("Fitness: %.3f ", ind.fitness.first);
+	printf("Fitness: %.3f\n", ind.fitness.first);
 
 	//example get population in device
-	//std::vector<std::vector<Individual*>> pops = algorithm.getDeviceInfo();
+	std::vector<std::vector<Individual*>> pops = algorithm.getDeviceInfo();
 
 	/*for(int i = 0; i < p; i++)
 	{

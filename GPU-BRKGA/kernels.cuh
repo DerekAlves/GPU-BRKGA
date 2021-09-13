@@ -19,35 +19,8 @@ Maceió, Alagoas, Brasil.
 #include "cub/cub.cuh"
 #include <curand_kernel.h>
 
-//UTILS
-void printFitness(float* keys, int* values, int sz)
-{
-	for(int i = 0; i < sz; i++)
-		printf("Fitness: %9.3f", keys[i]);
 
-}
-
-void printPopulation(float* population, float* keys, int* values, int sz, int n)
-{
-	for(int i = 0; i < sz; i++)
-	{
-		if(i % n == 0)printf("\n\nIndividuo: %d key %.2f value %d\n", i / n, keys[i/n], values[i/n] );
-		printf("%.2f ", population[i]);
-	}
-	printf("\n---------------------------------------------------------\n");
-}
-
-void printPopulation2(float* population, int sz, int n)
-{
-	for(int i = 0; i < sz; i++)
-	{
-		if(i % n == 0)printf("\n\nIndividuo: %d\n", i / n );
-		printf("%.2f ", population[i]);
-	}
-	printf("\n---------------------------------------------------------\n");
-}
-
-//############################################ CURAND RNG
+//CURAND RNG
 
 __global__ void setup_kernel(curandState *state, curandState *state2, int seed)
 {
@@ -78,7 +51,7 @@ __global__ void gpuInit(float* d_pop, int* d_val, curandState* d_crossStates, in
 		d_val[blockIdx.x] = blockIdx.x;
 }
 
-// AUX KERNELS
+//KERNELS
 
 __global__ void bestK(float* keys, unsigned K, unsigned p, int* bk)
 {	
@@ -98,24 +71,27 @@ __global__ void bestK(float* keys, unsigned K, unsigned p, int* bk)
 	return;
 }
 
-//TESTE
-__global__ void offspring(float* d_current, float* d_next, float* d_currFitKeys, int* d_currFitValues,
-	float* d_nextFitKeys, int* d_nextFitValues, int P, int PE, int PM, float rhoe, unsigned int ipt, 
+__global__ void offspring(float* d_current, float* d_next, int* d_currFitValues,
+	int* d_nextFitValues, int P, int PE, int PM, float rhoe, unsigned int n, 
 	curandState* d_crossStates, curandState* d_mateStates) 
 {
-	unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
-	unsigned int loc_idx = idx * ipt;
-	//printf("loc_idx %d\n", loc_idx);
+	
+	unsigned int idx = threadIdx.x + blockIdx.x * n;
+	unsigned int bidx =  idx;
+    unsigned int offset = blockDim.x;	
 
-	if(blockIdx.x < PE)
-	{
-		//COPY ELITE INDIVIDUALS
-		for(unsigned int i = 0; i < ipt; i++)
-			d_next[(loc_idx + i)] = d_current[d_currFitValues[blockIdx.x]*(blockDim.x * ipt) + threadIdx.x + i];
-	}
-	else if( blockIdx.x < P-PM)//GENERATE OFFSPRING
-	{
-		__shared__ unsigned int eliteParent;
+    if(blockIdx.x < PE)
+    {
+		
+        unsigned int pblk = d_currFitValues[blockIdx.x];
+        unsigned int pidx = threadIdx.x + pblk*n;
+        for(; idx < bidx + n; idx+=offset, pidx+=offset)
+            d_next[idx] = d_current[pidx];
+		
+    }
+    else if(blockIdx.x < P - PM)
+    {
+        __shared__ unsigned int eliteParent;
 		__shared__ unsigned int nonEliteParent;
 
 		if(!threadIdx.x)
@@ -123,30 +99,25 @@ __global__ void offspring(float* d_current, float* d_next, float* d_currFitKeys,
 			eliteParent = RNG_int(curand(&d_mateStates[blockIdx.x * 2]), PE);
 			nonEliteParent = PE + RNG_int(curand(&d_mateStates[(blockIdx.x + 1) * 2 - 1]), P-PE);
 		}
-		
-		__syncthreads();
-		for(unsigned int i = 0; i < ipt; i++)
-		{
-			float prob = RNG_real(curand(&d_crossStates[idx]));
-			int sp = prob < rhoe ? eliteParent : nonEliteParent;
-			d_next[loc_idx + i] = d_current[d_currFitValues[sp] * (blockDim.x * ipt) + threadIdx.x + i];
-		}
-	}
-	else if(blockIdx.x < P)//INSERT PM MUTANTS
-		for(unsigned int i = 0; i < ipt; i++)
-		{
-			d_next[loc_idx + i] = RNG_real(curand(&d_crossStates[idx]));
-		}
-	if(!threadIdx.x)
+        __syncthreads();
+        unsigned int epidx = threadIdx.x + eliteParent*n;
+        unsigned int pidx = threadIdx.x + nonEliteParent*n;
+        unsigned int sp;
+        float prob;
+        for(; idx < bidx + n; idx+=offset, pidx+=offset, epidx+=offset){
+            prob = RNG_real(curand(&d_crossStates[bidx]));
+            sp = prob < rhoe ? epidx : pidx;
+            d_next[idx] = d_current[sp];
+        }
+    }
+    else if(blockIdx.x < P)
+    {
+        for(; idx < bidx + n; idx+=offset)
+            d_next[idx] = RNG_real(curand(&d_crossStates[bidx]));
+    }
+
+    if(!threadIdx.x)
 		d_nextFitValues[blockIdx.x] = blockIdx.x;
-
-}
-
-//Copies n aleles from individual 2 to 1
-__device__ void cpy(float* pop1, float* pop2, int n)
-{
-	for(int i = 0; i < n; i++)
-		pop1[i] = pop2[i];
 }
 
 __global__ void exchange_te(float* d_populations, float* d_fitKeys, int* d_fitValues, int k, int p, int n, int top)
@@ -167,8 +138,8 @@ __global__ void exchange_te(float* d_populations, float* d_fitKeys, int* d_fitVa
 			fit2_idx = i*p + j;
 			pop1_idx = idx*p*n + d_fitValues[fit1_idx]*n;
 			pop2_idx = i*p*n + d_fitValues[fit2_idx]*n;
-			cpy(d_populations + pop1_idx, d_populations + pop2_idx, n);
-			d_fitKeys[fit1_idx] = d_fitKeys[fit2_idx]; // copies fitness
+			memcpy(d_populations + pop1_idx, d_populations + pop2_idx, sizeof(int)*n);//copy aleles
+			d_fitKeys[fit1_idx] = d_fitKeys[fit2_idx]; // copy fitness
 			dest--;
 		}
 	}

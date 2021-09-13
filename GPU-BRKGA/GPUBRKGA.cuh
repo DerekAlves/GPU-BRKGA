@@ -26,6 +26,7 @@ Maceió, Alagoas, Brasil.
 #include <exception>
 #include <stdexcept>
 #include "Individual.h"
+#include "cuda_errorchecking.h"
 
 template< class Decoder >
 class GPUBRKGA {
@@ -324,9 +325,10 @@ inline void GPUBRKGA< Decoder >::evolution() {
 		offp = getOffset(_k, true);
 		offf = getOffset(_k, false);
 
-		offspring<<<p, n>>>(d_current + offp, d_previous + offp, d_currFitnessKeys + offf, d_currFitnessValues + offf, d_prevFitnessKeys + offf, d_prevFitnessValues + offf,
-			p, pe, pm, rhoe, ipt, d_crossStates, d_mateStates);
+		offspring<<<p, n>>>(d_current + offp, d_previous + offp, d_currFitnessValues + offf, d_prevFitnessValues + offf,
+			p, pe, pm, rhoe, n, d_crossStates, d_mateStates);
 		
+			 
 		refDecoder.deco(p, n, d_previous + offp, d_prevFitnessKeys + offf, d_prevFitnessValues + offf);
 
 		// RADIX-SORT
