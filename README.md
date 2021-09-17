@@ -8,13 +8,7 @@ O GPU-BRKGA é fruto de dois ciclos de participação em um projeto de iniciaç�
 
 Autores:
 
-Derek Alves
-
-Davi Oliveira
-
-Bruno Nogueira
-
-Ermeson Andrade
+Derek Alves, Davi Oliveira, Bruno Nogueira, Ermeson Andrade
 
 ## Como utilizar
 
