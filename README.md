@@ -1,6 +1,16 @@
 # GPU-BRKGA
-Adicionando readme e polindo o código, já estã 100% funcional, alterações estéticas!
-Preciso adicionar a decisão sobre quantidade de threads, 2 linhas de código.
 
-Amanhã continuo, preciso sair as 7 horas para resolver um estágio.
-GPU-BRKGA
+Este repositório contém o código fonte da nossa biblioteca em GPU para o algoritmo genético enviesado de chave aleatória, este projeto foi proposto com apoio do CNPQ, FAPEAL e o Instituto de Computação da Universidade Federal de Alagoas.
+
+O GPU-BRKGA é fruto de dois ciclos de participação em um projeto de iniciação científica.
+
+Autores: 
+Derek Alves
+Davi Oliveira
+Bruno Nogueira
+Ermeson Andrade
+
+Como utilizar:
+
+
+
