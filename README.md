@@ -1,6 +1,6 @@
 # GPU-BRKGA
 
-##Introdução
+## Introdução
 
 Este repositório contém o código fonte da nossa biblioteca em GPU para o algoritmo genético enviesado de chave aleatória, este projeto foi proposto com apoio do CNPQ, FAPEAL e o Instituto de Computação da Universidade Federal de Alagoas.
 
@@ -16,7 +16,7 @@ Bruno Nogueira
 
 Ermeson Andrade
 
-##Como utilizar
+## Como utilizar
 
 
 
