@@ -16,6 +16,8 @@ Maceió, Alagoas, Brasil.
 #ifndef GPUBRKGA_CUH
 #define GPUBRKGA_CUH
 
+#define max_t 512
+
 #include "kernels.cuh"
 #include <curand_kernel.h>
 #include <curand.h>
@@ -31,65 +33,42 @@ Maceió, Alagoas, Brasil.
 template< class Decoder >
 class GPUBRKGA {
 public:
+
 	/*
-	 * Default constructor
-	 * Required hyperparameters:
-	 * - n: number of genes in each chromosome
-	 * - p: number of elements in each population
-	 * - pe: pct of elite items into each population
-	 * - pm: pct of mutants introduced at each generation into the population
-	 * - rhoe: probability that an offspring inherits the allele of its elite parent
-	 *
-	 * Optional parameters:
-	 * - K: number of independent Populations
-	 * - MAX_THREADS: number of threads to perform parallel decoding
-	 *                WARNING: Decoder::decode() MUST be thread-safe; safe if implemented as
-	 *                + double Decoder::decode(std::vector< double >& chromosome) const
+	Default constructor
+	 Required parameters:
+	 - n: number of genes in each chromosome
+	 - p: number of elements in each population
+	 - pe: pct of elite items into each population
+	 - pm: pct of mutants introduced at each generation into the population
+	 - rhoe: probability that an offspring inherits the allele of its elite parent
+	 - RefDecoder: Reference to the decoder specified by user
+	 - seed: Seed for the random number generator
+	 Optional parameters
+	 - K: number of independent populations
 	 */
-	GPUBRKGA(	unsigned n, unsigned p, double pe, double pm, double rhoe, const Decoder& refDecoder, int seed, unsigned it_perthr,
+	GPUBRKGA(	unsigned n, unsigned p, double pe, double pm, double rhoe, const Decoder& refDecoder, int seed, bool gpu_deco,
 			unsigned K = 1) throw(std::range_error);
 
-	/**
-	 * Destructor
-	 */
+	// destructor
 	~GPUBRKGA();
 
-	/**
-	 * Resets all populations with brand new keys
-	 */
+	// reset all populations with new keys
 	void reset();
 
-	/**
-	 * Evolve the current populations following the guidelines of BRKGAs
-	 * @param generations number of generations (must be even and nonzero)
-	 * @param J interval to exchange elite chromosomes (must be even; 0 ==> no synchronization)
-	 * @param M number of elite chromosomes to select from each population in order to exchange
-	 */
+	// evolves populations
 	void evolve(unsigned generations = 1);
 
-	/**
-	 * Exchange elite-solutions between the populations
-	 * @param M number of elite chromosomes to select from each population
-	 */
+	// exchange top M elite individuals from populations
 	void exchangeElite(unsigned M) throw(std::range_error);
 
-	/**
-	 * Returns the current population
-	 */
-	//const Population& getPopulation(unsigned k = 0) const;
-
-	/**
-	 * Returns the chromosome with best fitness so far among all populations
-	 */
-	//const void getBestChromosome(float *ptr) const;
-
-	/**
-	 * Returns the best fitness found so far among all populations
-	 */
-	//float getBestFitness() const;
-	void cpyHost();
+	// returns data from gpu
+	 std::vector<std::vector<Individual*>> getPopulations();
+	 Individual getBestIndividual();
+	 void cpyHost();
+	// initializes the GPU-BRKGA
 	void initializeGPU();
-	Individual getBestIndividual();
+	
 
 	// Return copies to the internal parameters:
 	unsigned getN() const;
@@ -99,34 +78,33 @@ public:
 	unsigned getPo() const;
 	double getRhoe() const;
 	unsigned getK() const;
-	float* getPopulations() const;
-	float* getFitnessKeys() const;
-	int* getFitnessValues() const;
-	unsigned getOffset(int _k, bool _pop) const;
-	unsigned getChromosome(unsigned _k, unsigned i) const;
-	std::vector<std::vector<Individual*>> getDeviceInfo();
-	unsigned getInd(unsigned _k, unsigned i, bool t) const;
+	unsigned getThr() const;
+	float* getHostPopulations() const;
+	float* getHostFitnessKeys() const;
+	int* getHostFitnessValues() const;
 
 private:
 
-	// Hyperparameters:
+	// parameters:
 	const unsigned n;	// number of genes in the chromosome
 	const unsigned p;	// number of elements in the population
 	const unsigned pe;	// number of elite items in the population
 	const unsigned pm;	// number of mutants introduced at each generation into the population
 	const double rhoe;	// probability that an offspring inherits the allele of its elite parent
 	const int seed;		// seed for the rng
-	const unsigned ipt;	// items to be computed for thread due to restrictions in thread number per block.
+	const Decoder& refDecoder; // reference to decoder
+	const unsigned K; // number of independent populations
+	const bool gpu_deco; // flag for GPU or CPU decode
 
-	const Decoder& refDecoder;
-
-	// Parallel populations parameters:
-	const unsigned K;				// number of independent parallel populations
+	unsigned thr;	// items to be computed for thread due to restrictions in thread number per block
 
 	// Host data pointers
 	float* h_populations;
 	float* h_fitnessKeys;
 	int* h_fitnessValues;
+
+	float* temp_pop;
+	float* temp_keys;
 
 	// Device data pointers
 	//Populations curr and prev
@@ -137,14 +115,17 @@ private:
 	int* d_currFitnessValues;
 	float* d_prevFitnessKeys;
 	int* d_prevFitnessValues;
+	//
 
-	//RNG STATES
+	// curand rng states
 	curandState* d_crossStates;
 	curandState* d_mateStates;
 
 	// Local operations:
 	void evolution();
 	bool isRepeated(const std::vector< double >& chrA, const std::vector< double >& chrB) const;
+	unsigned getInd(unsigned _k, unsigned i, bool t) const;
+	unsigned getOffset(int _k, bool _pop) const;
 };
 
 template< class Decoder >
@@ -163,9 +144,9 @@ void GPUBRKGA< Decoder >::cpyHost()
 }
 
 template< class Decoder >
-GPUBRKGA< Decoder >::GPUBRKGA(unsigned _n, unsigned _p, double _pe, double _pm, double _rhoe, const Decoder& _refDecoder, int _seed, unsigned it_perthr,
+GPUBRKGA< Decoder >::GPUBRKGA(unsigned _n, unsigned _p, double _pe, double _pm, double _rhoe, const Decoder& _refDecoder, int _seed, bool _gpu_deco,
 		unsigned _K) throw(std::range_error) :
-		n(_n), p(_p), pe(unsigned(_pe * p)), pm(unsigned(_pm * p)), rhoe(_rhoe), refDecoder(_refDecoder), seed(_seed), ipt(it_perthr),
+		n(_n), p(_p), pe(unsigned(_pe * p)), pm(unsigned(_pm * p)), rhoe(_rhoe), refDecoder(_refDecoder), seed(_seed), gpu_deco(_gpu_deco),
 		K(_K){
 	// Error check:
 	using std::range_error;
@@ -177,11 +158,13 @@ GPUBRKGA< Decoder >::GPUBRKGA(unsigned _n, unsigned _p, double _pe, double _pm, 
 	if(pe + pm > p) { throw range_error("elite + mutant sets greater than population size (p)."); }
 	if(K == 0) { throw range_error("Number of parallel populations cannot be zero."); }
 
-
+	thr = min(n, max_t);
 	// Host data alloc
 	h_populations 	= NULL;
 	h_fitnessKeys 	= NULL;
 	h_fitnessValues = NULL;
+	temp_pop = NULL;
+	temp_keys = NULL;
 
 	// Device data alloc
 	cudaMalloc((void**)&d_current, (K*p*n) * sizeof(float));
@@ -193,11 +176,13 @@ GPUBRKGA< Decoder >::GPUBRKGA(unsigned _n, unsigned _p, double _pe, double _pm, 
 	cudaMalloc((void**)&d_prevFitnessValues, (K*p) * sizeof(int));
 	
 	// RNG states
-	cudaMalloc((void**)&d_crossStates, (p*n) * sizeof(curandState));
+	cudaMalloc((void**)&d_crossStates, (p*thr) * sizeof(curandState));
 	cudaMalloc((void**)&d_mateStates, 2 * p * sizeof(curandState));
 	
 	//init_genrand(seed);
-	setup_kernel<<<p, n>>>(d_crossStates, d_mateStates, seed);
+	setup_kernel<<<p, thr>>>(d_crossStates, d_mateStates, seed);
+
+	refDecoder.Init();
 
 	initializeGPU();
 	
@@ -205,16 +190,27 @@ GPUBRKGA< Decoder >::GPUBRKGA(unsigned _n, unsigned _p, double _pe, double _pm, 
 
 template< class Decoder >
 GPUBRKGA< Decoder >::~GPUBRKGA() {
-	for(unsigned i = 0; i < K; ++i) {  }
+	cudaFree(d_current);
+	cudaFree(d_previous);
+	cudaFree(d_currFitnessKeys);
+	cudaFree(d_currFitnessValues);
+	cudaFree(d_prevFitnessKeys);
+	cudaFree(d_prevFitnessValues);
+	cudaFree(d_crossStates);
+	cudaFree(d_mateStates);
+
+	if(h_populations != NULL){
+		free(h_populations);
+		free(h_fitnessKeys);
+		free(h_fitnessValues);
+	}
+
+	if(temp_pop != NULL){
+		free(temp_pop);
+		free(temp_keys);
+	}
+
 }
-
-
-/*const Population& BRKGA<>::getPopulation(unsigned k) const {
-	#ifdef RANGECHECK
-		if(k >= K) { throw std::range_error("Invalid population identifier."); }
-	#endif
-	return ();
-}*/
 
 template< class Decoder >
 Individual GPUBRKGA< Decoder >::getBestIndividual() {
@@ -279,117 +275,12 @@ void GPUBRKGA< Decoder >::exchangeElite(unsigned M) throw(std::range_error) {
 	}
 	std::swap(d_currFitnessKeys, d_prevFitnessKeys);
 	std::swap(d_currFitnessValues, d_prevFitnessValues);
+
+	//cudaFree(d_temp_storage);
 }
 
 template< class Decoder >
-inline void GPUBRKGA< Decoder >::initializeGPU()
-{
-	int offp, offf;
-	void     *d_temp_storage = NULL;
-	size_t   temp_storage_bytes = 0;
-
-	for(int i = 0; i < K; i++)
-	{
-		offp = getOffset(i, true);
-		offf = getOffset(i, false);
-
-		gpuInit<<<p, n>>>(d_current + offp, d_currFitnessValues + offf, d_crossStates, ipt);
-		refDecoder.deco(K*p, n, d_current, d_currFitnessKeys, d_currFitnessValues);
-
-		if(d_temp_storage == NULL)
-		{
-			cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes, 
-				d_currFitnessKeys + (i*p), d_prevFitnessKeys + (i*p), d_currFitnessValues + (i*p), d_prevFitnessValues + (i*p), p);
-			// Allocate temporary storage
-			cudaMalloc(&d_temp_storage, temp_storage_bytes);
-		}
-		// Run sorting operation
-		cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes, 
-			d_currFitnessKeys + (i*p), d_prevFitnessKeys + (i*p), d_currFitnessValues + (i*p), d_prevFitnessValues + (i*p), p);
-
-	}
-	std::swap(d_currFitnessKeys, d_prevFitnessKeys);
-	std::swap(d_currFitnessValues, d_prevFitnessValues);	
-}
-
-template< class Decoder >
-inline void GPUBRKGA< Decoder >::evolution() {
-	// We now will set every chromosome of
-
-	unsigned offp, offf;
-	void     *d_temp_storage = NULL;
-	size_t   temp_storage_bytes = 0;
-
-	for(int _k = 0; _k < K; _k++)
-	{
-		offp = getOffset(_k, true);
-		offf = getOffset(_k, false);
-
-		offspring<<<p, n>>>(d_current + offp, d_previous + offp, d_currFitnessValues + offf, d_prevFitnessValues + offf,
-			p, pe, pm, rhoe, n, d_crossStates, d_mateStates);
-		
-			 
-		refDecoder.deco(p, n, d_previous + offp, d_prevFitnessKeys + offf, d_prevFitnessValues + offf);
-
-		// RADIX-SORT
-		// sorting fitness next
-		if(d_temp_storage == NULL)
-		{
-			cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes, 
-				d_prevFitnessKeys, d_currFitnessKeys, d_prevFitnessValues, d_currFitnessValues, p);
-			// Allocate temporary storage
-			cudaMalloc(&d_temp_storage, temp_storage_bytes);
-		}
-		
-		// Run sorting operation
-		cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes, 
-			d_prevFitnessKeys, d_currFitnessKeys, d_prevFitnessValues, d_currFitnessValues, p);
-	}
-}
-
-template< class Decoder >
-float* GPUBRKGA< Decoder >::getPopulations() const { return h_populations; }
-
-template< class Decoder >
-float* GPUBRKGA< Decoder >::getFitnessKeys() const { return h_fitnessKeys; }
-
-template< class Decoder >
-int* GPUBRKGA< Decoder >::getFitnessValues() const { return h_fitnessValues; }
-
-template< class Decoder >
-unsigned GPUBRKGA< Decoder >::getN() const { return n; }
-
-template< class Decoder >
-unsigned GPUBRKGA< Decoder >::getP() const { return p; }
-
-template< class Decoder >
-unsigned GPUBRKGA< Decoder >::getPe() const { return pe; }
-
-template< class Decoder >
-unsigned GPUBRKGA< Decoder >::getPm() const { return pm; }
-
-template< class Decoder >
-unsigned GPUBRKGA< Decoder >::getPo() const { return p - pe - pm; }
-
-template< class Decoder >
-double GPUBRKGA< Decoder >::getRhoe() const { return rhoe; }
-
-template< class Decoder >
-unsigned GPUBRKGA< Decoder >::getK() const { return K; }
-
-template< class Decoder >
-unsigned GPUBRKGA< Decoder >::getOffset(int _k, bool _pop) const { 
-	if(_pop)return _k*p*n; // true, return chromosomes of population k offset
-	else return _k*p; // else return fitness of population k offset
-}
-
-template< class Decoder > // get gpu pointer to chromosome i of population k in current
-unsigned GPUBRKGA< Decoder >::getChromosome(unsigned _k, unsigned i) const { 
-	return _k*p*n + i*n;
-}
-
-template< class Decoder >
-std::vector<std::vector<Individual*>> GPUBRKGA< Decoder>::getDeviceInfo(){
+std::vector<std::vector<Individual*>> GPUBRKGA< Decoder>::getPopulations(){
 
 	if(h_populations == NULL)
 	{
@@ -421,6 +312,130 @@ std::vector<std::vector<Individual*>> GPUBRKGA< Decoder>::getDeviceInfo(){
 
 	}		
 	return pops;
+}
+
+template< class Decoder >
+inline void GPUBRKGA< Decoder >::initializeGPU()
+{
+	int offp, offf;
+	void     *d_temp_storage = NULL;
+	size_t   temp_storage_bytes = 0;
+
+	for(int i = 0; i < K; i++)
+	{
+		offp = getOffset(i, true);
+		offf = getOffset(i, false);
+
+		gpuInit<<<p, thr>>>(n, d_current + offp, d_currFitnessValues + offf, d_crossStates);
+
+		if(gpu_deco) refDecoder.Decode(d_current, d_currFitnessKeys);
+		else{
+			if(temp_pop == NULL){
+				temp_pop = (float*)malloc(p*n*sizeof(float));
+				temp_keys = (float*)malloc(p*sizeof(float));
+			}
+			
+			cudaMemcpy(temp_pop, d_current + offp, p*n*sizeof(float), cudaMemcpyDeviceToHost);
+			refDecoder.Decode(temp_pop, temp_keys);
+			cudaMemcpy(d_currFitnessKeys + offf, temp_keys, p*sizeof(float), cudaMemcpyHostToDevice);
+		}
+
+		if(d_temp_storage == NULL)
+		{
+			cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes, 
+				d_currFitnessKeys + (i*p), d_prevFitnessKeys + (i*p), d_currFitnessValues + (i*p), d_prevFitnessValues + (i*p), p);
+			// Allocate temporary storage
+			cudaMalloc(&d_temp_storage, temp_storage_bytes);
+		}
+		// Run sorting operation
+		cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes, 
+			d_currFitnessKeys + (i*p), d_prevFitnessKeys + (i*p), d_currFitnessValues + (i*p), d_prevFitnessValues + (i*p), p);
+
+	}
+	std::swap(d_currFitnessKeys, d_prevFitnessKeys);
+	std::swap(d_currFitnessValues, d_prevFitnessValues);	
+}
+
+template< class Decoder >
+inline void GPUBRKGA< Decoder >::evolution() {
+	
+	unsigned offp, offf;
+	void     *d_temp_storage = NULL;
+	size_t   temp_storage_bytes = 0;
+
+	for(int _k = 0; _k < K; _k++)
+	{
+		offp = getOffset(_k, true);
+		offf = getOffset(_k, false);
+
+		offspring<<<p, n>>>(d_current + offp, d_previous + offp, d_currFitnessValues + offf, d_prevFitnessValues + offf,
+			p, pe, pm, rhoe, n, d_crossStates, d_mateStates);
+		
+		if(gpu_deco) refDecoder.Decode(d_previous + offp, d_prevFitnessKeys + offf);
+		else{
+			if(temp_pop == NULL){
+				temp_pop = (float*)malloc(p*n*sizeof(float));
+				temp_keys = (float*)malloc(p*sizeof(float));
+			}
+			
+			cudaMemcpy(temp_pop, d_previous + offp, p*n*sizeof(float), cudaMemcpyDeviceToHost);
+			refDecoder.Decode(temp_pop, temp_keys);
+			cudaMemcpy(d_prevFitnessKeys + offf, temp_keys, p*sizeof(float), cudaMemcpyHostToDevice);
+		}	 
+
+		// RADIX-SORT
+		// sorting fitness next
+		if(d_temp_storage == NULL)
+		{
+			cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes, 
+				d_prevFitnessKeys, d_currFitnessKeys, d_prevFitnessValues, d_currFitnessValues, p);
+			// Allocate temporary storage
+			cudaMalloc(&d_temp_storage, temp_storage_bytes);
+		}
+		
+		// Run sorting operation
+		cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes, 
+			d_prevFitnessKeys, d_currFitnessKeys, d_prevFitnessValues, d_currFitnessValues, p);
+	}
+}
+
+template< class Decoder >
+float* GPUBRKGA< Decoder >::getHostPopulations() const { return h_populations; }
+
+template< class Decoder >
+float* GPUBRKGA< Decoder >::getHostFitnessKeys() const { return h_fitnessKeys; }
+
+template< class Decoder >
+int* GPUBRKGA< Decoder >::getHostFitnessValues() const { return h_fitnessValues; }
+
+template< class Decoder >
+unsigned GPUBRKGA< Decoder >::getN() const { return n; }
+
+template< class Decoder >
+unsigned GPUBRKGA< Decoder >::getP() const { return p; }
+
+template< class Decoder >
+unsigned GPUBRKGA< Decoder >::getPe() const { return pe; }
+
+template< class Decoder >
+unsigned GPUBRKGA< Decoder >::getPm() const { return pm; }
+
+template< class Decoder >
+unsigned GPUBRKGA< Decoder >::getPo() const { return p - pe - pm; }
+
+template< class Decoder >
+double GPUBRKGA< Decoder >::getRhoe() const { return rhoe; }
+
+template< class Decoder >
+unsigned GPUBRKGA< Decoder >::getK() const { return K; }
+
+template< class Decoder >
+unsigned GPUBRKGA< Decoder >::getThr() const { return thr; }
+
+template< class Decoder >
+unsigned GPUBRKGA< Decoder >::getOffset(int _k, bool _pop) const { 
+	if(_pop)return _k*p*n; // true, return chromosomes of population k offset
+	else return _k*p; // else return fitness of population k offset
 }
 
 template< class Decoder > // get index to chromosome/fitness i of population k

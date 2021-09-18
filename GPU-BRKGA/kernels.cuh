@@ -39,13 +39,15 @@ __device__ int RNG_int(unsigned n, int mod) // returns number % mod!
 __device__ float RNG_real(unsigned n) // returns [0, 1) interval
 { return n * (1.0/4294967296.0); }
 
-__global__ void gpuInit(float* d_pop, int* d_val, curandState* d_crossStates, int ipt)
+__global__ void gpuInit(int n, float* d_pop, int* d_val, curandState* d_crossStates)
 {
-	int idx = threadIdx.x + blockIdx.x * blockDim.x;
-	unsigned int loc_idx = idx * ipt;
+	unsigned int idx = threadIdx.x + blockIdx.x * n;
+	unsigned int bidx =  idx;
+	unsigned int auxidx = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int offset = blockDim.x;	
 
-	for(unsigned int i = 0; i < ipt; i++)
-		d_pop[loc_idx + i] = RNG_real(curand(&d_crossStates[idx]));
+	for(; idx < bidx + n; idx+=offset)
+            d_pop[idx] = RNG_real(curand(&d_crossStates[auxidx]));
 
 	if(!threadIdx.x)
 		d_val[blockIdx.x] = blockIdx.x;
@@ -78,6 +80,7 @@ __global__ void offspring(float* d_current, float* d_next, int* d_currFitValues,
 	
 	unsigned int idx = threadIdx.x + blockIdx.x * n;
 	unsigned int bidx =  idx;
+	unsigned int auxidx = threadIdx.x + blockIdx.x * blockDim.x;
     unsigned int offset = blockDim.x;	
 
     if(blockIdx.x < PE)
@@ -105,7 +108,7 @@ __global__ void offspring(float* d_current, float* d_next, int* d_currFitValues,
         unsigned int sp;
         float prob;
         for(; idx < bidx + n; idx+=offset, pidx+=offset, epidx+=offset){
-            prob = RNG_real(curand(&d_crossStates[bidx]));
+            prob = RNG_real(curand(&d_crossStates[auxidx]));
             sp = prob < rhoe ? epidx : pidx;
             d_next[idx] = d_current[sp];
         }
@@ -113,7 +116,7 @@ __global__ void offspring(float* d_current, float* d_next, int* d_currFitValues,
     else if(blockIdx.x < P)
     {
         for(; idx < bidx + n; idx+=offset)
-            d_next[idx] = RNG_real(curand(&d_crossStates[bidx]));
+            d_next[idx] = RNG_real(curand(&d_crossStates[auxidx]));
     }
 
     if(!threadIdx.x)

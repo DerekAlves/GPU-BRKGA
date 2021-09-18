@@ -34,7 +34,9 @@ Individual::Individual(float* al, std::pair<float, int> ft)
     fitness = ft;
 }
 
-Individual::~Individual(){}
+Individual::~Individual(){
+    free(aleles);
+}
 
 void Individual::ToString()
 {
