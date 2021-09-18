@@ -16,7 +16,7 @@ Maceió, Alagoas, Brasil.
 #ifndef K_CUH
 #define K_CUH
 
-__global__ void dec(float* d_next, float* d_nextFitKeys, int* d_nextFitValues)
+__global__ void dec(float* d_next, float* d_nextFitKeys)
 {
 	unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
 	float xi = (d_next[idx] - 0.499) * 10.24;

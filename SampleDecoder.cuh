@@ -18,11 +18,14 @@ Maceió, Alagoas, Brasil.
 //#include "k.cuh"
 
 class SampleDecoder {
+private:
+	int p, n;
 public:
 	SampleDecoder();	// Constructor
 	~SampleDecoder();	// Destructor
+	void Init() const;
 
-	void deco(int blk, int thr, float* d_next, float* d_nextFitKeys, int* d_nextFitValues) const;
+	void Decode(float* d_next, float* d_nextFitKeys) const;
 };
 
 #endif

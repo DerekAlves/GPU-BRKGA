@@ -20,7 +20,13 @@ SampleDecoder::SampleDecoder() { }
 
 SampleDecoder::~SampleDecoder() { }
 
-void SampleDecoder::deco(int blk, int thr, float* d_next, float* d_nextFitKeys, int* d_nextFitValues) const {
-	dec<<<blk, thr>>>(d_next, d_nextFitKeys, d_nextFitValues);
+void SampleDecoder::Init() const{
+    return;
+}
+
+void SampleDecoder::Decode(float* d_next, float* d_nextFitKeys) const {
+    int p = 256;
+    int n = 32;
+	dec<<<p, n>>>(d_next, d_nextFitKeys);
     return;
 }

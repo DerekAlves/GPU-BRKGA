@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
 	cudaEventRecord(start, 0);
 
 	// initialize GPU-BRKGA
-	GPUBRKGA<SampleDecoder> algorithm(n, p, pe, pm, rhoe, RefDecoder, se, ipt, K);
+	GPUBRKGA<SampleDecoder> algorithm(n, p, pe, pm, rhoe, RefDecoder, se, true, K);
 	
 	
 	unsigned generation = 0;		// current generation
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
 	printf("Fitness: %.3f\n", ind.fitness.first);
 
 	//example get population in device
-	std::vector<std::vector<Individual*>> pops = algorithm.getDeviceInfo();
+	std::vector<std::vector<Individual*>> pops = algorithm.getPopulations();
 
 	/*for(int i = 0; i < p; i++)
 	{
