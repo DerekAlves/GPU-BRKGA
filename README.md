@@ -39,11 +39,11 @@ Para este arquivo, alguns métodos devem ser chamados:
 
 Inicializar o GPU-BRKGA a partir do contrutor da classe.
 
-Após isso, o usuário deve chamar a função evolve, a função evolve pode ser chamada passando um parâmetro que indica a quantidade de gerações que as populações irão evoluir, por exemplo: evolve(1000), assim, evoluindo por mil gerações, ou então chamar simplesmente evolve(), que irá evoluir por uma geração e assim controlar a quantidade de gerações por meio de um laço.
+Após isso, o usuário deve chamar a função evolve, a função evolve pode ser chamada passando um parâmetro que indica a quantidade de gerações que as populações irão evoluir, por exemplo: `evolve(1000)`, assim, evoluindo por mil gerações, ou então chamar simplesmente `evolve()`, que irá evoluir por uma geração e assim controlar a quantidade de gerações por meio de um laço.
 
-Então, após as gerações desejadas, o usuário pode obter a melhor solução encontrada por meio do método getBestIndividual(), que irá retornar a melhor solução.
+Então, após as gerações desejadas, o usuário pode obter a melhor solução encontrada por meio do método `getBestIndividual()`, que irá retornar a melhor solução.
 
-Podem ainda ser utilizados outros métodos presentes em nossa API, como por exemplo: reset(), que irá reinciar todas as populações do algoritmo com novas chaves aleatórias, exchangeElite(M), que irá trocar os M indivíduos elite entre as populações independentes, caso utilize mais de uma população, getPopulations() que irá retornar todas as populações presentes no algoritmo, cpyHost(), que copia todos os dados em memória VRAM para a RAM além dos já conhecidos métodos get para acessar valores privados ao GPU-BRKGA.
+Podem ainda ser utilizados outros métodos presentes em nossa API, como por exemplo: `reset()`, que irá reinciar todas as populações do algoritmo com novas chaves aleatórias, `exchangeElite(M)`, que irá trocar os M indivíduos elite entre as populações independentes, caso utilize mais de uma população, `getPopulations()` que irá retornar todas as populações presentes no algoritmo, `cpyHost()`, que copia todos os dados em memória VRAM para a RAM, além dos já conhecidos métodos get para acessar valores privados ao GPU-BRKGA.
 
 
 
