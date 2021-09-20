@@ -27,7 +27,15 @@ Decode: É o método que irá decodificar uma população por completo, este mé
 
 Init: É o método que é chamado na inicialização do algoritmo, e sua finalidade é garantir ao usuário a possibilidade de inicializar possíveis instâncias que o decodificador poderá utilizar.
 
-Uma vez especificada a classe decoder, o usuário prosseguirá com a implementação do arquivo que servirá como base para resolver o problema escolhido., um exemplo para este arquivo está contido no repositório, você poderá encontrá-lo pelo nome api-usage.cu
+Um exemplo para um decodificador para a função Rastrigin foi implementado, pode ser encontrado pelo nome SampleDecoder.cu.
+
+Uma vez especificada a classe decoder, o usuário prosseguirá com a implementação do arquivo que servirá como base para resolver o problema escolhido., um exemplo para este arquivo está contido no repositório, você poderá encontrá-lo pelo nome api-usage.cu.
+
+Para este arquivo, alguns métodos devem ser chamados:
+
+
+
+
 
 
 
