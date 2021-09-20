@@ -4,7 +4,9 @@
 
 Este repositório contém o código fonte da nossa biblioteca em GPU para o algoritmo genético enviesado de chave aleatória, este projeto foi proposto com apoio do CNPQ, FAPEAL e o Instituto de Computação da Universidade Federal de Alagoas. O GPU-BRKGA é fruto de dois ciclos de participação em um projeto de iniciação científica.
 
-Você pode compilar este repositório utilizando o terminal com o NVCC instalado, basta executar o Makefile, se compilado corretamente, você pode executar utilizando ./api-usage 'seed' 'gerações', por exemplo: ./api-usage 0 1000, o algoritmo irá executar com seed 0 e rodar por 1000 gerações.
+Você pode compilar este repositório utilizando o terminal com o NVCC instalado, basta executar o Makefile, se compilado corretamente, você pode executar utilizando:
+`./api-usage 'seed' 'gerações'`, por exemplo:
+`./api-usage 0 1000`, o algoritmo irá executar com seed 0 e rodar por 1000 gerações.
 Autores:
 
 Derek Alves, Davi Oliveira, Bruno Nogueira e Ermeson Andrade
