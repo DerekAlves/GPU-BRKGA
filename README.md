@@ -4,6 +4,7 @@
 
 Este repositório contém o código fonte da nossa biblioteca em GPU para o algoritmo genético enviesado de chave aleatória, este projeto foi proposto com apoio do CNPQ, FAPEAL e o Instituto de Computação da Universidade Federal de Alagoas. O GPU-BRKGA é fruto de dois ciclos de participação em um projeto de iniciação científica.
 
+Você pode compilar este repositório utilizando o terminal com o NVCC instalado, basta executar o Makefile, se compilado corretamente, você pode executar utilizando ./api-usage 'seed' 'gerações', por exemplo: ./api-usage 0 1000, o algoritmo irá executar com seed 0 e rodar por 1000 gerações.
 Autores:
 
 Derek Alves, Davi Oliveira, Bruno Nogueira e Ermeson Andrade
@@ -32,6 +33,14 @@ Um exemplo para um decodificador para a função Rastrigin foi implementado, pod
 Uma vez especificada a classe decoder, o usuário prosseguirá com a implementação do arquivo que servirá como base para resolver o problema escolhido., um exemplo para este arquivo está contido no repositório, você poderá encontrá-lo pelo nome api-usage.cu.
 
 Para este arquivo, alguns métodos devem ser chamados:
+
+Inicializar o GPU-BRKGA a partir do contrutor da classe.
+
+Após isso, o usuário deve chamar a função evolve, a função evolve pode ser chamada passando um parâmetro que indica a quantidade de gerações que as populações irão evoluir, por exemplo: evolve(1000), assim, evoluindo por mil gerações, ou então chamar simplesmente evolve(), que irá evoluir por uma geração e assim controlar a quantidade de gerações por meio de um laço.
+
+Então, após as gerações desejadas, o usuário pode obter a melhor solução encontrada por meio do método getBestIndividual(), que irá retornar a melhor solução.
+
+Podem ainda ser utilizados outros métodos presentes em nossa API, como por exemplo: reset(), que irá reinciar todas as populações do algoritmo com novas chaves aleatórias, exchangeElite(M), que irá trocar os M indivíduos elite entre as populações independentes, caso utilize mais de uma população, getPopulations() que irá retornar todas as populações presentes no algoritmo, cpyHost(), que copia todos os dados em memória VRAM para a RAM além dos já conhecidos métodos get para acessar valores privados ao GPU-BRKGA.
 
 
 
